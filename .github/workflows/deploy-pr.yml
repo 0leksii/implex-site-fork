@@ -1,0 +1,55 @@
+name: Pull Request Build and Deploy
+on:
+  pull_request:
+    branches: [ main ]
+    paths-ignore:
+      - '.github/workflows/**'
+      - '**.md'
+
+env:
+  PR_REPO_NAME: app-pr-${{ github.event.pull_request.node_id }}
+
+jobs:
+  create-page-host:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create new repository for temporary deployment
+        uses: octobay/create-repository-action@v1
+        with:
+          name: ${{ env.PR_REPO_NAME }}
+          org: ${{ github.repository_owner }}
+          access-token: ${{ secrets.PAT }}
+
+  pr-build-deploy:
+    needs: create-page-host
+    runs-on: ubuntu-latest
+    environment:
+      name: pr-staging
+      url: https://${{ github.repository_owner }}.github.io/${{ env.PR_REPO_NAME }}/
+    steps:
+      - name: Set GitHub Actions as Commit Author
+        run: |
+          git config --global user.name github-actions
+          git config --global user.email github-actions@github.com
+
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+        with:
+          path: 'pr-build'
+
+      - name: Checkout temporary deployment target repo
+        uses: actions/checkout@v2
+        with:
+          repository: ${{ github.repository_owner }}/${{ env.PR_REPO_NAME }}
+          path: 'pr-deploy'
+          token: ${{ secrets.PAT }}
+
+      - name: Push files to target
+        run: |
+          rsync -r ./pr-build/* ./pr-deploy --delete --exclude .github
+          cd pr-deploy
+          touch .nojekyll
+          git add .
+          git commit -m $GITHUB_SHA
+          git branch -M gh-pages
+          git push -u origin gh-pages
