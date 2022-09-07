@@ -51,5 +51,5 @@ jobs:
           touch .nojekyll
           git add .
           git commit -m $GITHUB_SHA
-          git branch -M main
-          git push -u origin main
+          git branch -M gh-pages
+          git push -u origin gh-pages
