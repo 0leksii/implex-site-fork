@@ -31,7 +31,7 @@ jobs:
             git config --global user.email github-actions@github.com
       - name: Push files to target
         run: |
-          rsync ./build/* ./deploy --exclude .github
+          rsync -r ./build/* ./deploy --delete --exclude .github
           cd deploy
           echo ${{ env.URL }} > CNAME
           git add .
